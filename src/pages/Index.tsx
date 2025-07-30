@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { ProductGrid } from '@/components/ProductGrid';
 import { AdminPanel } from '@/components/AdminPanel';
-import { useProducts } from '@/hooks/useProducts';
+import { useProductsSecure } from '@/hooks/useProductsSecure';
 import { Product } from '@/types/product';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,6 +13,7 @@ const Index = () => {
   const {
     products,
     allProducts,
+    loading,
     searchQuery,
     selectedCategory,
     productCounts,
@@ -20,7 +21,7 @@ const Index = () => {
     trackProductClick,
     setSearchQuery,
     setSelectedCategory,
-  } = useProducts();
+  } = useProductsSecure();
 
   // Theme management
   useEffect(() => {
