@@ -3,16 +3,21 @@ import { Header } from '@/components/Header';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { ProductGrid } from '@/components/ProductGrid';
 import { AdminPanel } from '@/components/AdminPanel';
-import { useProducts } from '@/hooks/useProducts';
+import { useProductsSecure } from '@/hooks/useProductsSecure';
 import { Product } from '@/types/product';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [isDark, setIsDark] = useState(false);
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
   const {
     products,
     allProducts,
+    loading,
     searchQuery,
     selectedCategory,
     productCounts,
@@ -20,7 +25,7 @@ const Index = () => {
     trackProductClick,
     setSearchQuery,
     setSelectedCategory,
-  } = useProducts();
+  } = useProductsSecure();
 
   // Theme management
   useEffect(() => {
@@ -51,6 +56,16 @@ const Index = () => {
     trackProductClick(productId);
   };
 
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (!error) {
+      toast({
+        title: "Signed out",
+        description: "You've been signed out successfully",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -59,6 +74,17 @@ const Index = () => {
         onSearch={setSearchQuery}
         totalProducts={allProducts.length}
       />
+      
+      {user && (
+        <div className="container mx-auto px-4 pt-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      )}
       
       <CategoryFilter
         selectedCategory={selectedCategory}
@@ -100,11 +126,17 @@ const Index = () => {
         )}
 
         {/* Products Grid */}
-        <ProductGrid
-          products={products}
-          onShare={handleShare}
-          onProductClick={handleProductClick}
-        />
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading products...</p>
+          </div>
+        ) : (
+          <ProductGrid
+            products={products}
+            onShare={handleShare}
+            onProductClick={handleProductClick}
+          />
+        )}
 
         {/* Admin Panel */}
         <AdminPanel onAddProduct={addProduct} />

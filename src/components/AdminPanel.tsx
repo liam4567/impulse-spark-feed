@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,15 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Settings } from 'lucide-react';
-import { ProductForm, CATEGORIES } from '@/types/product';
+import { Plus, Settings, Lock } from 'lucide-react';
+import { CATEGORIES } from '@/types/product';
 import { useToast } from '@/hooks/use-toast';
+import { productFormSchema, ProductFormData } from '@/lib/validations';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthModal } from './AuthModal';
 
 interface AdminPanelProps {
-  onAddProduct: (product: ProductForm) => void;
+  onAddProduct: (product: ProductFormData) => void;
 }
 
-const initialForm: ProductForm = {
+const initialForm: ProductFormData = {
   title: '',
   description: '',
   price: '',
@@ -28,44 +30,75 @@ const initialForm: ProductForm = {
 };
 
 export const AdminPanel = ({ onAddProduct }: AdminPanelProps) => {
-  const [form, setForm] = useState<ProductForm>(initialForm);
+  const [form, setForm] = useState<ProductFormData>(initialForm);
   const [isOpen, setIsOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const { toast } = useToast();
+  const { user, isAdmin } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!form.title || !form.description || !form.price || !form.imageUrl || !form.affiliateUrl) {
+    try {
+      // Validate form data
+      const validatedData = productFormSchema.parse(form);
+      
+      onAddProduct(validatedData);
+      setForm(initialForm);
+      setIsOpen(false);
+    } catch (error: any) {
       toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
+        title: "Validation Error",
+        description: error.errors?.[0]?.message || "Please check your input",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenDialog = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (!isAdmin) {
+      toast({
+        title: "Admin Access Required",
+        description: "Only administrators can add products",
         variant: "destructive",
       });
       return;
     }
-
-    onAddProduct(form);
-    setForm(initialForm);
-    setIsOpen(false);
     
-    toast({
-      title: "Product Added!",
-      description: "Your product has been added to the store",
-    });
+    setIsOpen(true);
   };
 
-  const updateForm = (field: keyof ProductForm, value: string | boolean) => {
+  const updateForm = (field: keyof ProductFormData, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="fixed bottom-6 right-6 z-50 shadow-xl bg-gradient-to-r from-primary to-secondary hover:shadow-glow" size="lg">
-          <Plus className="w-5 h-5 mr-2" />
-          Add Product
-        </Button>
-      </DialogTrigger>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button 
+            onClick={handleOpenDialog}
+            className="fixed bottom-6 right-6 z-50 shadow-xl bg-gradient-to-r from-primary to-secondary hover:shadow-glow" 
+            size="lg"
+          >
+            {user && isAdmin ? (
+              <>
+                <Plus className="w-5 h-5 mr-2" />
+                Add Product
+              </>
+            ) : (
+              <>
+                <Lock className="w-5 h-5 mr-2" />
+                Admin Login
+              </>
+            )}
+          </Button>
+        </DialogTrigger>
       
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -195,5 +228,8 @@ export const AdminPanel = ({ onAddProduct }: AdminPanelProps) => {
         </form>
       </DialogContent>
     </Dialog>
+    
+    <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+    </>
   );
 };
